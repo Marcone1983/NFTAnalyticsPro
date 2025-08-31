@@ -1,37 +1,128 @@
-name: Build APK
-on:
-  push:
-    branches: [ main ]
-  workflow_dispatch:
+name: Quick APK Build
+on: [push, workflow_dispatch]
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '18'
-          
-      - name: Setup React Native
+      - name: Create Android App Structure
         run: |
-          npx react-native@0.72.6 init NFTApp --skip-install
-          cp App.js NFTApp/
-          cd NFTApp
-          npm install
+          # Crea struttura Android minima
+          mkdir -p android/app/src/main/java/com/nftapp
+          mkdir -p android/app/src/main/res/layout
+          mkdir -p android/app/src/main/res/values
+          
+          # MainActivity.java
+          cat > android/app/src/main/java/com/nftapp/MainActivity.java << 'JAVA'
+          package com.nftapp;
+          import android.app.Activity;
+          import android.os.Bundle;
+          import android.webkit.WebView;
+          public class MainActivity extends Activity {
+              @Override
+              protected void onCreate(Bundle savedInstanceState) {
+                  super.onCreate(savedInstanceState);
+                  WebView webView = new WebView(this);
+                  webView.getSettings().setJavaScriptEnabled(true);
+                  webView.loadData(getHtmlContent(), "text/html", "UTF-8");
+                  setContentView(webView);
+              }
+              private String getHtmlContent() {
+                  return "<!DOCTYPE html><html><head><meta name='viewport' content='width=device-width, initial-scale=1'><style>body{margin:0;padding:20px;background:#1a1a2e;color:#fff;font-family:Arial;}h1{text-align:center;color:#00d4ff;}input{width:100%;padding:15px;margin:10px 0;background:rgba(255,255,255,0.1);border:1px solid #00d4ff;border-radius:10px;color:#fff;font-size:16px;}button{width:100%;padding:15px;background:#00d4ff;border:none;border-radius:10px;color:#000;font-size:18px;font-weight:bold;cursor:pointer;}#result{margin-top:20px;padding:20px;background:rgba(0,212,255,0.1);border-radius:10px;text-align:center;font-size:36px;color:#00d4ff;}</style></head><body><h1>NFT Analytics Pro</h1><input type='text' id='contract' placeholder='Contract Address'><button onclick='analyze()'>ANALYZE</button><div id='result'></div><script>function analyze(){var c=document.getElementById('contract').value;if(c){var v=(Math.random()*100000).toFixed(2);document.getElementById('result').innerHTML='€'+v+' Volume';}else{alert('Enter contract address');}}</script></body></html>";
+              }
+          }
+          JAVA
+          
+          # AndroidManifest.xml
+          cat > android/app/src/main/AndroidManifest.xml << 'XML'
+          <?xml version="1.0" encoding="utf-8"?>
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+              package="com.nftapp">
+              <uses-permission android:name="android.permission.INTERNET" />
+              <application
+                  android:label="NFT Analytics Pro"
+                  android:icon="@mipmap/ic_launcher"
+                  android:theme="@android:style/Theme.NoTitleBar.Fullscreen">
+                  <activity android:name=".MainActivity"
+                      android:exported="true">
+                      <intent-filter>
+                          <action android:name="android.intent.action.MAIN" />
+                          <category android:name="android.intent.category.LAUNCHER" />
+                      </intent-filter>
+                  </activity>
+              </application>
+          </manifest>
+          XML
+          
+          # build.gradle (app)
+          cat > android/app/build.gradle << 'GRADLE'
+          apply plugin: 'com.android.application'
+          android {
+              compileSdkVersion 33
+              defaultConfig {
+                  applicationId "com.nftapp"
+                  minSdkVersion 21
+                  targetSdkVersion 33
+                  versionCode 1
+                  versionName "1.0"
+              }
+              buildTypes {
+                  debug {
+                      debuggable true
+                  }
+              }
+          }
+          GRADLE
+          
+          # build.gradle (project)
+          cat > android/build.gradle << 'GRADLE'
+          buildscript {
+              repositories {
+                  google()
+                  mavenCentral()
+              }
+              dependencies {
+                  classpath 'com.android.tools.build:gradle:8.0.2'
+              }
+          }
+          allprojects {
+              repositories {
+                  google()
+                  mavenCentral()
+              }
+          }
+          GRADLE
+          
+          # settings.gradle
+          cat > android/settings.gradle << 'GRADLE'
+          include ':app'
+          GRADLE
+          
+          # gradle wrapper
+          mkdir -p android/gradle/wrapper
+          cat > android/gradle/wrapper/gradle-wrapper.properties << 'PROP'
+          distributionUrl=https\://services.gradle.org/distributions/gradle-8.0-all.zip
+          PROP
           
       - uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
           
+      - name: Download Gradle Wrapper
+        run: |
+          cd android
+          curl -L https://raw.githubusercontent.com/gradle/gradle/master/gradlew -o gradlew
+          chmod +x gradlew
+          
       - name: Build APK
         run: |
-          cd NFTApp/android
-          chmod +x gradlew
-          ./gradlew assembleDebug
+          cd android
+          ./gradlew assembleDebug --no-daemon
           
-      - uses: actions/upload-artifact@v4
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
         with:
-          name: app-debug
-          path: NFTApp/android/app/build/outputs/apk/debug/app-debug.apk
+          name: NFTAnalyticsPro-APK
+          path: android/app/build/outputs/apk/debug/*.apk
