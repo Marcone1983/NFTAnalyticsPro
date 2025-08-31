@@ -7,26 +7,31 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
+      - uses: actions/checkout@v4
+      
+      - uses: actions/setup-node@v4
         with:
           node-version: '18'
+          
       - name: Setup React Native
         run: |
           npx react-native@0.72.6 init NFTApp --skip-install
           cp App.js NFTApp/
           cd NFTApp
           npm install
-      - uses: actions/setup-java@v3
+          
+      - uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
+          
       - name: Build APK
         run: |
           cd NFTApp/android
           chmod +x gradlew
           ./gradlew assembleDebug
-      - uses: actions/upload-artifact@v3
+          
+      - uses: actions/upload-artifact@v4
         with:
           name: app-debug
           path: NFTApp/android/app/build/outputs/apk/debug/app-debug.apk
