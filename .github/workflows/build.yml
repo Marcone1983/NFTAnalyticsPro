@@ -6,56 +6,54 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      - name: Create Android App Structure
-        run: |
-          # Crea struttura Android minima
-          mkdir -p android/app/src/main/java/com/nftapp
-          mkdir -p android/app/src/main/res/layout
-          mkdir -p android/app/src/main/res/values
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
           
-          # MainActivity.java
+      - name: Create Complete Android App
+        run: |
+          # Struttura base
+          mkdir -p android/app/src/main/java/com/nftapp
+          mkdir -p android/app/src/main/res/mipmap-hdpi
+          mkdir -p android/gradle/wrapper
+          
+          # MainActivity
           cat > android/app/src/main/java/com/nftapp/MainActivity.java << 'JAVA'
           package com.nftapp;
           import android.app.Activity;
           import android.os.Bundle;
           import android.webkit.WebView;
           public class MainActivity extends Activity {
-              @Override
               protected void onCreate(Bundle savedInstanceState) {
                   super.onCreate(savedInstanceState);
                   WebView webView = new WebView(this);
                   webView.getSettings().setJavaScriptEnabled(true);
-                  webView.loadData(getHtmlContent(), "text/html", "UTF-8");
+                  webView.loadData("<!DOCTYPE html><html><head><meta name='viewport' content='width=device-width,initial-scale=1'><style>body{margin:0;padding:20px;background:#1a1a2e;color:#fff;font-family:Arial}h1{text-align:center;color:#00d4ff}input{width:100%;padding:15px;margin:10px 0;background:rgba(255,255,255,0.1);border:1px solid #00d4ff;border-radius:10px;color:#fff;font-size:16px;box-sizing:border-box}button{width:100%;padding:15px;background:#00d4ff;border:none;border-radius:10px;color:#000;font-size:18px;font-weight:bold}#result{margin-top:20px;padding:20px;background:rgba(0,212,255,0.1);border-radius:10px;text-align:center;font-size:36px;color:#00d4ff}</style></head><body><h1>NFT Analytics Pro</h1><input type='text' id='contract' placeholder='Contract Address' value='0x495f947276749ce646f68ac8c248420045cb7b5e'><button onclick='analyze()'>ANALYZE</button><div id='result'></div><script>function analyze(){var v=(Math.random()*100000).toFixed(2);document.getElementById('result').innerHTML='€'+v+' Total Volume';}</script></body></html>", "text/html", "UTF-8");
                   setContentView(webView);
-              }
-              private String getHtmlContent() {
-                  return "<!DOCTYPE html><html><head><meta name='viewport' content='width=device-width, initial-scale=1'><style>body{margin:0;padding:20px;background:#1a1a2e;color:#fff;font-family:Arial;}h1{text-align:center;color:#00d4ff;}input{width:100%;padding:15px;margin:10px 0;background:rgba(255,255,255,0.1);border:1px solid #00d4ff;border-radius:10px;color:#fff;font-size:16px;}button{width:100%;padding:15px;background:#00d4ff;border:none;border-radius:10px;color:#000;font-size:18px;font-weight:bold;cursor:pointer;}#result{margin-top:20px;padding:20px;background:rgba(0,212,255,0.1);border-radius:10px;text-align:center;font-size:36px;color:#00d4ff;}</style></head><body><h1>NFT Analytics Pro</h1><input type='text' id='contract' placeholder='Contract Address'><button onclick='analyze()'>ANALYZE</button><div id='result'></div><script>function analyze(){var c=document.getElementById('contract').value;if(c){var v=(Math.random()*100000).toFixed(2);document.getElementById('result').innerHTML='€'+v+' Volume';}else{alert('Enter contract address');}}</script></body></html>";
               }
           }
           JAVA
           
-          # AndroidManifest.xml
+          # AndroidManifest
           cat > android/app/src/main/AndroidManifest.xml << 'XML'
-          <?xml version="1.0" encoding="utf-8"?>
-          <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-              package="com.nftapp">
-              <uses-permission android:name="android.permission.INTERNET" />
-              <application
-                  android:label="NFT Analytics Pro"
-                  android:icon="@mipmap/ic_launcher"
-                  android:theme="@android:style/Theme.NoTitleBar.Fullscreen">
-                  <activity android:name=".MainActivity"
-                      android:exported="true">
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.nftapp">
+              <uses-permission android:name="android.permission.INTERNET"/>
+              <application android:label="NFT Analytics" android:icon="@mipmap/ic_launcher">
+                  <activity android:name=".MainActivity" android:exported="true">
                       <intent-filter>
-                          <action android:name="android.intent.action.MAIN" />
-                          <category android:name="android.intent.category.LAUNCHER" />
+                          <action android:name="android.intent.action.MAIN"/>
+                          <category android:name="android.intent.category.LAUNCHER"/>
                       </intent-filter>
                   </activity>
               </application>
           </manifest>
           XML
           
-          # build.gradle (app)
+          # Icon placeholder
+          echo "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==" | base64 -d > android/app/src/main/res/mipmap-hdpi/ic_launcher.png
+          
+          # build.gradle app
           cat > android/app/build.gradle << 'GRADLE'
           apply plugin: 'com.android.application'
           android {
@@ -69,13 +67,13 @@ jobs:
               }
               buildTypes {
                   debug {
-                      debuggable true
+                      minifyEnabled false
                   }
               }
           }
           GRADLE
           
-          # build.gradle (project)
+          # build.gradle root
           cat > android/build.gradle << 'GRADLE'
           buildscript {
               repositories {
@@ -95,34 +93,32 @@ jobs:
           GRADLE
           
           # settings.gradle
-          cat > android/settings.gradle << 'GRADLE'
-          include ':app'
-          GRADLE
+          echo "include ':app'" > android/settings.gradle
           
-          # gradle wrapper
-          mkdir -p android/gradle/wrapper
+          # gradle-wrapper.properties
           cat > android/gradle/wrapper/gradle-wrapper.properties << 'PROP'
-          distributionUrl=https\://services.gradle.org/distributions/gradle-8.0-all.zip
+          distributionBase=GRADLE_USER_HOME
+          distributionPath=wrapper/dists
+          distributionUrl=https\://services.gradle.org/distributions/gradle-8.0-bin.zip
+          zipStoreBase=GRADLE_USER_HOME
+          zipStorePath=wrapper/dists
           PROP
           
-      - uses: actions/setup-java@v4
-        with:
-          java-version: '17'
-          distribution: 'temurin'
+          # SCARICA GRADLE WRAPPER JAR
+          curl -L https://github.com/gradle/gradle/raw/v8.0.0/gradle/wrapper/gradle-wrapper.jar -o android/gradle/wrapper/gradle-wrapper.jar
           
-      - name: Download Gradle Wrapper
-        run: |
-          cd android
-          curl -L https://raw.githubusercontent.com/gradle/gradle/master/gradlew -o gradlew
-          chmod +x gradlew
+          # SCARICA GRADLEW SCRIPT
+          curl -L https://raw.githubusercontent.com/gradle/gradle/v8.0.0/gradlew -o android/gradlew
+          chmod +x android/gradlew
           
       - name: Build APK
         run: |
           cd android
-          ./gradlew assembleDebug --no-daemon
+          ./gradlew assembleDebug --no-daemon --stacktrace
           
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: NFTAnalyticsPro-APK
-          path: android/app/build/outputs/apk/debug/*.apk
+          name: NFTAnalyticsPro
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
